@@ -1,4 +1,3 @@
-// services/websocketService.js
 import { io } from 'socket.io-client';
 
 class WebSocketService {
@@ -8,54 +7,40 @@ class WebSocketService {
   }
 
   connect() {
-    if (this.socket) return;
-
-    this.socket = io('http://localhost:3002', {
+    const token = localStorage.getItem('token');
+    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const baseURL = API_URL.replace('/api', '');
+    
+    this.socket = io(baseURL, {
+      auth: { token },
       transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
     });
 
     this.socket.on('connect', () => {
       console.log('WebSocket connected');
+      
+      // Join user room
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (user?._id) {
+        this.socket.emit('join', user._id);
+      }
     });
 
     this.socket.on('disconnect', () => {
       console.log('WebSocket disconnected');
     });
 
-    this.socket.on('excel-updated', (data) => {
-      // Notify all listeners
-      this.listeners.forEach((callback, event) => {
-        if (event === 'excel-updated') {
-          callback(data);
-        }
-      });
+    // Setup listeners
+    this.socket.on('new_message', (data) => {
+      this.emit('new_message', data);
     });
 
-    this.socket.on('machine-status-updated', (data) => {
-      this.listeners.forEach((callback, event) => {
-        if (event === 'machine-status') {
-          callback(data);
-        }
-      });
+    this.socket.on('notification', (data) => {
+      this.emit('notification', data);
     });
 
-    this.socket.on('downtime-updated', (data) => {
-      this.listeners.forEach((callback, event) => {
-        if (event === 'downtime') {
-          callback(data);
-        }
-      });
-    });
-
-    this.socket.on('attendance-updated', (data) => {
-      this.listeners.forEach((callback, event) => {
-        if (event === 'attendance') {
-          callback(data);
-        }
-      });
+    this.socket.on('message_read', (data) => {
+      this.emit('message_read', data);
     });
   }
 
@@ -67,34 +52,34 @@ class WebSocketService {
   }
 
   on(event, callback) {
-    this.listeners.set(event, callback);
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event).add(callback);
   }
 
-  off(event) {
-    this.listeners.delete(event);
-  }
-
-  emit(event, data) {
-    if (this.socket) {
-      this.socket.emit(event, data);
+  off(event, callback) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).delete(callback);
     }
   }
 
-  // Specific methods for Excel data
-  requestExcelData() {
-    this.emit('request-excel-data');
+  emit(event, data) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).forEach(callback => callback(data));
+    }
   }
 
-  requestMachineStatus() {
-    this.emit('request-machine-status');
+  sendMessage(messageData) {
+    if (this.socket) {
+      this.socket.emit('send_message', messageData);
+    }
   }
 
-  requestDowntime() {
-    this.emit('request-downtime');
-  }
-
-  requestAttendance() {
-    this.emit('request-attendance');
+  sendNotification(notificationData) {
+    if (this.socket) {
+      this.socket.emit('send_notification', notificationData);
+    }
   }
 }
 

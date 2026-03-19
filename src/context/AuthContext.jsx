@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser } from '../services/auth';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -23,13 +23,21 @@ export const AuthProvider = ({ children }) => {
   const checkUser = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (token) {
-        const userData = await getCurrentUser();
-        setUser(userData);
+      const storedUser = localStorage.getItem('user');
+      
+      if (token && storedUser) {
+        // Set default authorization header
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Get fresh user data from backend
+        const response = await api.get('/auth/profile');
+        setUser(response.data);
       }
     } catch (error) {
       console.error('Failed to get current user:', error);
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      delete api.defaults.headers.common['Authorization'];
     } finally {
       setLoading(false);
     }
@@ -37,10 +45,24 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await apiLogin(credentials);
-      setUser(response.user);
+      const response = await api.post('/auth/login', {
+        email: credentials.email,
+        password: credentials.password
+      });
+      
+      const { token, ...userData } = response.data;
+      
+      // Save to localStorage
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Set default authorization header
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      setUser(userData);
       toast.success('Login successful!');
-      return response;
+      
+      return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Login failed';
       toast.error(errorMessage);
@@ -50,9 +72,16 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await apiRegister(userData);
+      const response = await api.post('/auth/register', {
+        name: userData.name,
+        email: userData.email,
+        password: userData.password,
+        role: userData.role || 'user',
+        department: userData.department || ''
+      });
+      
       toast.success('Registration successful! Please login.');
-      return response;
+      return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Registration failed';
       toast.error(errorMessage);
@@ -62,11 +91,34 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await apiLogout();
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      delete api.defaults.headers.common['Authorization'];
       setUser(null);
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await api.put('/auth/profile', profileData);
+      
+      const { token, ...updatedUser } = response.data;
+      
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      setUser(updatedUser);
+      toast.success('Profile updated successfully!');
+      
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Update failed';
+      toast.error(errorMessage);
+      throw error;
     }
   };
 
@@ -75,7 +127,11 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    loading
+    updateProfile,
+    loading,
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'admin',
+    isManager: user?.role === 'manager',
   };
 
   return (

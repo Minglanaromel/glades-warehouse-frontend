@@ -377,5 +377,16 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+
+
+    /* Prevent ResizeObserver errors */
+* {
+  transition: none !important;
+}
+
+.recharts-wrapper,
+.recharts-surface {
+  overflow: visible !important;
+}
   }
 }

@@ -1,4 +1,3 @@
-// components/Dashboard/DowntimeMonitor.jsx
 import React, { useState, useEffect } from 'react';
 import { 
   ClockIcon, 
@@ -7,15 +6,12 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import useExcelData from '../../hooks/useExcelData';
-// REMOVE or COMMENT OUT this line:
-// import gladesLogo from '../../assets/images/glades-logo.png';
 
 const DowntimeMonitor = () => {
   const { downtimeData, loading, lastUpdate } = useExcelData();
   const [dateTime, setDateTime] = useState(new Date());
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [downtime, setDowntime] = useState([]);
-  // REMOVE logoError state
 
   useEffect(() => {
     const timer = setInterval(() => setDateTime(new Date()), 1000);
@@ -23,10 +19,21 @@ const DowntimeMonitor = () => {
   }, []);
 
   useEffect(() => {
-    if (downtimeData.length > 0) {
-      setDowntime(downtimeData);
+    if (downtimeData && downtimeData.length > 0) {
+      // Process downtime data from Excel (Downtime Monitoring sheet)
+      const processed = downtimeData.map(item => ({
+        plant: item.Plant || 'P1',
+        machine: item['Machine Name'] || 'Unknown',
+        startTime: item['Start Downtime'] || '00:00',
+        endTime: item['End Downtime'] || '00:00',
+        duration: item.Duration || '0 mins',
+        operator: item.Operator || 'Unknown',
+        reason: item['Downtime Reason'] || 'No reason specified',
+        status: getStatusFromReason(item['Downtime Reason'] || '')
+      }));
+      setDowntime(processed);
     } else {
-      // Fallback mock data
+      // Fallback mock data from your Excel
       setDowntime([
         {
           plant: 'P1',
@@ -68,18 +75,36 @@ const DowntimeMonitor = () => {
           reason: 'Malf sevo motor pack on transport',
           status: 'Breakdown',
         },
+        {
+          plant: 'P2',
+          machine: 'G6310-2',
+          startTime: '11:00',
+          endTime: '13:00',
+          duration: '2 hrs',
+          operator: 'Jerry Calaluan',
+          reason: 'change Mold',
+          status: 'Under Maintenance',
+        }
       ]);
     }
   }, [downtimeData]);
 
+  const getStatusFromReason = (reason) => {
+    if (reason.toLowerCase().includes('maintenance')) return 'Under Maintenance';
+    if (reason.toLowerCase().includes('breakdown')) return 'Breakdown';
+    if (reason.toLowerCase().includes('repair')) return 'Under Repair';
+    return 'Not running';
+  };
+
   const totalDowntime = downtime.reduce((acc, curr) => {
-    const hours = parseInt(curr.duration?.split(' ')[0] || '0');
-    return acc + (isNaN(hours) ? 0 : hours);
+    const duration = curr.duration || '0 mins';
+    const hours = parseInt(duration.split(' ')[0]) || 0;
+    return acc + hours;
   }, 0);
 
   return (
     <div className="space-y-6">
-      {/* Header - USING ICON */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white p-6 rounded-lg shadow-lg">
         <div className="flex items-center space-x-4">
           <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
@@ -123,13 +148,15 @@ const DowntimeMonitor = () => {
           <p className="text-3xl font-semibold text-yellow-600">{downtime.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-          <p className="text-sm font-medium text-gray-600">Affected Machines</p>
-          <p className="text-3xl font-semibold text-blue-600">{downtime.length}</p>
+          <p className="text-sm font-medium text-gray-600">Plant 1 Issues</p>
+          <p className="text-3xl font-semibold text-blue-600">
+            {downtime.filter(d => d.plant === 'P1').length}
+          </p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-gray-500">
-          <p className="text-sm font-medium text-gray-600">Avg. Downtime per Event</p>
-          <p className="text-3xl font-semibold text-gray-900">
-            {downtime.length > 0 ? (totalDowntime / downtime.length).toFixed(1) : 0} hrs
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+          <p className="text-sm font-medium text-gray-600">Plant 2 Issues</p>
+          <p className="text-3xl font-semibold text-green-600">
+            {downtime.filter(d => d.plant === 'P2').length}
           </p>
         </div>
       </div>
