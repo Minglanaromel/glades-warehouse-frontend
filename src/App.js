@@ -1,7 +1,8 @@
-// App.jsx (UPDATED WITH SETTINGS)
+// App.jsx (UPDATED WITH MESSAGES)
 import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { MessageProvider } from './context/MessageContext'; // Added MessageProvider
 import Layout from './components/Layout/Layout';
 import CCTV from './components/CCTV/CCTV';
 import PrivateRoute from './components/Auth/PrivateRoute';
@@ -16,7 +17,8 @@ import AttendanceTracker from './components/Dashboard/AttendanceTracker';
 import OTIFDashboard from './components/Dashboard/OTIFDashboard';
 import ProfilePage from './components/Profile/ProfilePage';
 import NotificationsPage from './components/Notifications/NotificationsPage';
-import SettingsPage from './components/Settings/SettingsPage'; // Added Settings import
+import SettingsPage from './components/Settings/SettingsPage';
+import MessagesPage from './components/Messages/MessagesPage'; // Added Messages import
 
 // Stock Items
 import StockItemList from './components/StockItems/StockItemList';
@@ -65,7 +67,7 @@ import Recordings from './components/CCTV/Recordings';
 
 function App() {
   return (
-    <>
+    <MessageProvider> {/* Wrap everything with MessageProvider */}
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -113,10 +115,11 @@ function App() {
           <Route path="attendance" element={<AttendanceTracker />} />
           <Route path="otif-dashboard" element={<OTIFDashboard />} />
           
-          {/* Profile, Notifications and Settings */}
+          {/* Profile, Notifications, Messages and Settings */}
           <Route path="profile" element={<ProfilePage />} />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="settings" element={<SettingsPage />} /> {/* Added Settings route */}
+          <Route path="messages" element={<MessagesPage />} /> {/* Added Messages route */}
+          <Route path="settings" element={<SettingsPage />} />
           
           {/* Stock Items Routes */}
           <Route path="stock-items">
@@ -191,7 +194,7 @@ function App() {
           <Route path="fullscreen" element={<CCTVFullscreen />} />
         </Route>
       </Routes>
-    </>
+    </MessageProvider>
   );
 }
 

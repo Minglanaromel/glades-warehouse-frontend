@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useMessages } from '../../context/MessageContext'; // Import useMessages
 import {
   HomeIcon,
   CubeIcon,
@@ -20,13 +21,15 @@ import {
   CalendarIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  BuildingOfficeIcon,
   ArrowRightOnRectangleIcon,
-  BellIcon, // Added BellIcon import
+  BellIcon,
+  EnvelopeIcon, // Add EnvelopeIcon for Messages
+  // ❌ INALIS ko ang BuildingOfficeIcon dahil hindi naman ginamit
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const { messages } = useMessages(); // Get messages from context
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState({
     production: location.pathname.includes('/production') || 
@@ -37,6 +40,11 @@ const Sidebar = () => {
     cctv: location.pathname.includes('/cctv'),
     reports: location.pathname.includes('/reports'),
   });
+  const [logoError, setLogoError] = useState(false); // ✅ OK ito
+
+  // Calculate unread messages count
+  const unreadMessagesCount = messages.filter(m => !m.read).length;
+  const unreadNotificationsCount = 4; // Your existing notifications count
 
   const toggleMenu = (menu) => {
     setOpenMenus(prev => ({
@@ -52,11 +60,15 @@ const Sidebar = () => {
       icon: HomeIcon,
       end: true 
     },
-    // Notifications link - added after Dashboard
     { 
       name: 'Notifications', 
       to: '/notifications', 
       icon: BellIcon 
+    },
+    { 
+      name: 'Messages',  // Add Messages here
+      to: '/messages', 
+      icon: EnvelopeIcon 
     },
     {
       name: 'Production',
@@ -143,15 +155,32 @@ const Sidebar = () => {
     }
   };
 
-  // Mock unread notifications count (you can replace with real data from context/state)
-  const unreadCount = 4;
-
   return (
     <div className="w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white shadow-xl flex flex-col h-screen">
-      {/* Company Logo and Name - UPDATED with GLADES INTERNATIONAL CORPORATION */}
+      {/* Company Logo and Name - WITH PNG LOGO */}
       <div className="p-6 border-b border-gray-700 bg-gradient-to-r from-blue-600 to-blue-800">
         <div className="flex items-center space-x-3">
-          <BuildingOfficeIcon className="h-8 w-8 text-white" />
+          {/* PNG Logo - try multiple paths */}
+          {!logoError ? (
+            <img 
+              src="/images/glades-logo.png" 
+              alt="GLADES Logo"
+              className="h-10 w-auto object-contain"
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <img 
+              src="/assets/images/glades-logo.png" 
+              alt="GLADES Logo"
+              className="h-10 w-auto object-contain"
+              onError={(e) => {
+                console.log('Logo not found, using fallback');
+                e.target.style.display = 'none';
+              }}
+            />
+          )}
+          
+          {/* Fallback text kung walang image */}
           <div>
             <h1 className="text-xl font-bold text-white tracking-wider leading-tight">
               GLADES
@@ -193,7 +222,6 @@ const Sidebar = () => {
             <li key={item.name}>
               {item.children ? (
                 <div className="mb-1">
-                  {/* Parent Menu Button */}
                   <button
                     onClick={() => toggleMenu(item.key)}
                     className={`w-full flex items-center justify-between px-4 py-2.5 text-sm rounded-lg transition-all ${
@@ -213,7 +241,6 @@ const Sidebar = () => {
                     )}
                   </button>
 
-                  {/* Child Menu Items */}
                   {openMenus[item.key] && (
                     <ul className="ml-8 mt-1 space-y-1">
                       {item.children.map((child) => (
@@ -250,10 +277,18 @@ const Sidebar = () => {
                 >
                   <item.icon className="mr-3 h-5 w-5" />
                   {item.name}
-                  {/* Add notification badge for Notifications link */}
-                  {item.name === 'Notifications' && unreadCount > 0 && (
+                  
+                  {/* Badge for Notifications */}
+                  {item.name === 'Notifications' && unreadNotificationsCount > 0 && (
                     <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
-                      {unreadCount}
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                  
+                  {/* Badge for Messages */}
+                  {item.name === 'Messages' && unreadMessagesCount > 0 && (
+                    <span className="ml-auto bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                      {unreadMessagesCount}
                     </span>
                   )}
                 </NavLink>

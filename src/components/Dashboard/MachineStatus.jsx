@@ -9,12 +9,20 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import useExcelData from '../../hooks/useExcelData';
+// REMOVE THIS LINE: import gladesLogo from '../../assets/images/glades-logo.png';
 
 const MachineStatus = () => {
   const { machineStatus: excelMachines, loading, lastUpdate } = useExcelData();
+  const [dateTime, setDateTime] = useState(new Date());
   const [filter, setFilter] = useState('all');
   const [plant, setPlant] = useState('all');
   const [machines, setMachines] = useState([]);
+  // REMOVE logoError state
+
+  useEffect(() => {
+    const timer = setInterval(() => setDateTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (excelMachines.length > 0) {
@@ -74,19 +82,29 @@ const MachineStatus = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with GLADES branding */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6 rounded-lg shadow-lg">
-        <div className="flex justify-between items-center">
+      {/* Header with GLADES branding - USING ICON INSTEAD OF LOGO */}
+      <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white p-6 rounded-lg shadow-lg">
+        <div className="flex items-center space-x-4">
+          {/* Use BuildingOfficeIcon as logo */}
+          <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
+            <BuildingOfficeIcon className="h-8 w-8 text-white" />
+          </div>
+          
+          <div>
+            <h1 className="text-2xl font-bold tracking-wider">GLADES INTERNATIONAL CORPORATION</h1>
+            <p className="text-blue-200 text-sm mt-1">Machine Status Monitor • Real-time Dashboard</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-between items-center mt-4 pt-4 border-t border-blue-700">
           <div className="flex items-center space-x-4">
-            <BuildingOfficeIcon className="h-8 w-8 text-blue-200" />
-            <div>
-              <h1 className="text-2xl font-bold tracking-wider">GLADES INTERNATIONAL CORPORATION</h1>
-              <p className="text-blue-200 mt-1">Machine Status Monitor • Real-time Dashboard</p>
+            <div className="flex items-center space-x-2 bg-blue-800/50 px-4 py-2 rounded-lg">
+              <ArrowPathIcon className="h-4 w-4 text-blue-300 animate-spin" />
+              <span className="text-sm text-blue-200">Last Update: {lastUpdate.toLocaleTimeString()}</span>
             </div>
           </div>
-          <div className="flex items-center space-x-2 bg-blue-800 px-4 py-2 rounded-lg">
-            <ArrowPathIcon className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Last Update: {lastUpdate.toLocaleTimeString()}</span>
+          <div className="text-sm text-blue-200 bg-blue-800/30 px-4 py-2 rounded-lg">
+            {dateTime.toLocaleDateString()} {dateTime.toLocaleTimeString()}
           </div>
         </div>
       </div>
