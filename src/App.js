@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { MessageProvider } from './context/MessageContext';
+import { ExcelDataProvider } from './context/ExcelDataContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout/Layout';
 import CCTV from './components/CCTV/CCTV';
@@ -71,135 +72,137 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <MessageProvider>
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-              success: {
+          <ExcelDataProvider>
+            <Toaster 
+              position="top-right"
+              toastOptions={{
                 duration: 3000,
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#fff',
+                style: {
+                  background: '#363636',
+                  color: '#fff',
                 },
-              },
-              error: {
-                duration: 4000,
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: '#10b981',
+                    secondary: '#fff',
+                  },
                 },
-              },
-            }}
-          />
-          
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+                error: {
+                  duration: 4000,
+                  iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
             
-            {/* Main Layout Routes */}
-            <Route path="/" element={
-              <PrivateRoute>
-                <Layout />
-              </PrivateRoute>
-            }>
-              <Route index element={<Navigate to="/dashboard" replace />} />
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               
-              {/* Dashboard Routes */}
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="production-dashboard" element={<ProductionDashboard />} />
-              <Route path="capacity-utilization" element={<CapacityUtilization />} />
-              <Route path="machine-status" element={<MachineStatus />} />
-              <Route path="downtime-monitor" element={<DowntimeMonitor />} />
-              <Route path="attendance" element={<AttendanceTracker />} />
-              <Route path="otif-dashboard" element={<OTIFDashboard />} />
-              
-              {/* Profile, Notifications, Messages and Settings */}
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="messages" element={<MessagesPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              
-              {/* Stock Items Routes */}
-              <Route path="stock-items">
-                <Route index element={<StockItemList />} />
-                <Route path="new" element={<StockItemForm />} />
-                <Route path="edit/:id" element={<StockItemForm />} />
-                <Route path="import" element={<StockItemImport />} />
+              {/* Main Layout Routes */}
+              <Route path="/" element={
+                <PrivateRoute>
+                  <Layout />
+                </PrivateRoute>
+              }>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                
+                {/* Dashboard Routes */}
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="production-dashboard" element={<ProductionDashboard />} />
+                <Route path="capacity-utilization" element={<CapacityUtilization />} />
+                <Route path="machine-status" element={<MachineStatus />} />
+                <Route path="downtime-monitor" element={<DowntimeMonitor />} />
+                <Route path="attendance" element={<AttendanceTracker />} />
+                <Route path="otif-dashboard" element={<OTIFDashboard />} />
+                
+                {/* Profile, Notifications, Messages and Settings */}
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="messages" element={<MessagesPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                
+                {/* Stock Items Routes */}
+                <Route path="stock-items">
+                  <Route index element={<StockItemList />} />
+                  <Route path="new" element={<StockItemForm />} />
+                  <Route path="edit/:id" element={<StockItemForm />} />
+                  <Route path="import" element={<StockItemImport />} />
+                </Route>
+                
+                {/* Customers Routes */}
+                <Route path="customers">
+                  <Route index element={<CustomerList />} />
+                  <Route path="new" element={<CustomerForm />} />
+                  <Route path="edit/:id" element={<CustomerForm />} />
+                  <Route path="import" element={<CustomerImport />} />
+                </Route>
+                
+                {/* Suppliers Routes */}
+                <Route path="suppliers">
+                  <Route index element={<SupplierList />} />
+                  <Route path="new" element={<SupplierForm />} />
+                  <Route path="edit/:id" element={<SupplierForm />} />
+                  <Route path="import" element={<SupplierImport />} />
+                </Route>
+                
+                {/* Purchase Orders Routes */}
+                <Route path="purchase-orders">
+                  <Route index element={<PurchaseOrderList />} />
+                  <Route path="new" element={<PurchaseOrderForm />} />
+                  <Route path=":id" element={<PurchaseOrderDetails />} />
+                  <Route path="edit/:id" element={<PurchaseOrderForm />} />
+                </Route>
+                
+                {/* Sales Orders Routes */}
+                <Route path="sales-orders">
+                  <Route index element={<SalesOrderList />} />
+                  <Route path="new" element={<SalesOrderForm />} />
+                  <Route path=":id" element={<SalesOrderDetails />} />
+                  <Route path="edit/:id" element={<SalesOrderForm />} />
+                </Route>
+                
+                {/* Reports Routes */}
+                <Route path="reports">
+                  <Route path="daily-activity" element={<DailyActivityReport />} />
+                  <Route path="sales" element={<SalesReport />} />
+                  <Route path="purchase" element={<PurchaseReport />} />
+                  <Route path="sales-outstanding" element={<SalesOutstanding />} />
+                  <Route path="purchase-outstanding" element={<PurchaseOutstanding />} />
+                  <Route path="low-stock" element={<LowStockReport />} />
+                  <Route path="trouble-reports" element={<ProdnTroubleReport />} />
+                </Route>
+                
+                {/* User Management Routes */}
+                <Route path="users">
+                  <Route index element={<UserList />} />
+                  <Route path="new" element={<UserForm />} />
+                  <Route path="edit/:id" element={<UserForm />} />
+                  <Route path="access/:id" element={<UserAccess />} />
+                </Route>
               </Route>
-              
-              {/* Customers Routes */}
-              <Route path="customers">
-                <Route index element={<CustomerList />} />
-                <Route path="new" element={<CustomerForm />} />
-                <Route path="edit/:id" element={<CustomerForm />} />
-                <Route path="import" element={<CustomerImport />} />
-              </Route>
-              
-              {/* Suppliers Routes */}
-              <Route path="suppliers">
-                <Route index element={<SupplierList />} />
-                <Route path="new" element={<SupplierForm />} />
-                <Route path="edit/:id" element={<SupplierForm />} />
-                <Route path="import" element={<SupplierImport />} />
-              </Route>
-              
-              {/* Purchase Orders Routes */}
-              <Route path="purchase-orders">
-                <Route index element={<PurchaseOrderList />} />
-                <Route path="new" element={<PurchaseOrderForm />} />
-                <Route path=":id" element={<PurchaseOrderDetails />} />
-                <Route path="edit/:id" element={<PurchaseOrderForm />} />
-              </Route>
-              
-              {/* Sales Orders Routes */}
-              <Route path="sales-orders">
-                <Route index element={<SalesOrderList />} />
-                <Route path="new" element={<SalesOrderForm />} />
-                <Route path=":id" element={<SalesOrderDetails />} />
-                <Route path="edit/:id" element={<SalesOrderForm />} />
-              </Route>
-              
-              {/* Reports Routes */}
-              <Route path="reports">
-                <Route path="daily-activity" element={<DailyActivityReport />} />
-                <Route path="sales" element={<SalesReport />} />
-                <Route path="purchase" element={<PurchaseReport />} />
-                <Route path="sales-outstanding" element={<SalesOutstanding />} />
-                <Route path="purchase-outstanding" element={<PurchaseOutstanding />} />
-                <Route path="low-stock" element={<LowStockReport />} />
-                <Route path="trouble-reports" element={<ProdnTroubleReport />} />
-              </Route>
-              
-              {/* User Management Routes */}
-              <Route path="users">
-                <Route index element={<UserList />} />
-                <Route path="new" element={<UserForm />} />
-                <Route path="edit/:id" element={<UserForm />} />
-                <Route path="access/:id" element={<UserAccess />} />
-              </Route>
-            </Route>
 
-            {/* CCTV Routes with their own layout */}
-            <Route path="/cctv" element={
-              <PrivateRoute>
-                <CCTV />
-              </PrivateRoute>
-            }>
-              <Route index element={<CCTVGrid />} />
-              <Route path="cameras" element={<CCTVGrid />} />
-              <Route path="camera/:id" element={<CameraDetails />} />
-              <Route path="recordings" element={<Recordings />} />
-              <Route path="fullscreen" element={<CCTVFullscreen />} />
-            </Route>
+              {/* CCTV Routes with their own layout */}
+              <Route path="/cctv" element={
+                <PrivateRoute>
+                  <CCTV />
+                </PrivateRoute>
+              }>
+                <Route index element={<CCTVGrid />} />
+                <Route path="cameras" element={<CCTVGrid />} />
+                <Route path="camera/:id" element={<CameraDetails />} />
+                <Route path="recordings" element={<Recordings />} />
+                <Route path="fullscreen" element={<CCTVFullscreen />} />
+              </Route>
 
-            {/* Catch all route */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+              {/* Catch all route */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </ExcelDataProvider>
         </MessageProvider>
       </AuthProvider>
     </ErrorBoundary>

@@ -1,100 +1,126 @@
+// src/server.js
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const http = require('http');
+const socketIo = require('socket.io');
+const dotenv = require('dotenv');
+const fs = require('fs');
 
-const { connectDB } = require('./config/database');
-const { PORT, NODE_ENV, CLIENT_URL, CLIENT_URL_ALT } = require('./config/env');
-const errorHandler = require('./middleware/errorMiddleware');
+dotenv.config();
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-// ✅ ADD THIS LINE - Excel routes
 const excelRoutes = require('./routes/excelRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
-// Connect to database
-connectDB();
+// Create uploads directory
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Create data directory
+const dataDir = path.join(__dirname, '../data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
 
 const app = express();
 const server = http.createServer(app);
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 100,
-  message: 'Too many requests from this IP, please try again later.',
+// Socket.io setup
+const io = socketIo(server, {
+  cors: {
+    origin: [process.env.CLIENT_URL, process.env.CLIENT_URL_ALT, 'http://localhost:3000', 'http://localhost:3001'],
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
 
-// CORS configuration - Allow multiple origins
-const allowedOrigins = [CLIENT_URL, CLIENT_URL_ALT, 'http://localhost:3000', 'http://localhost:3001'];
+// Make io accessible to routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// Socket.io connection
+io.on('connection', (socket) => {
+  console.log('📡 Client connected:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('📡 Client disconnected:', socket.id);
+  });
+});
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100,
+  message: 'Too many requests'
+});
 
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true,
+  origin: [process.env.CLIENT_URL, process.env.CLIENT_URL_ALT, 'http://localhost:3000', 'http://localhost:3001'],
+  credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
 
-// Apply rate limiting to API routes
+// Static files
+app.use('/uploads', express.static(uploadsDir));
+
+// Apply rate limiting
 app.use('/api/', limiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-// ✅ ADD THIS LINE - Mount Excel routes
 app.use('/api/excel', excelRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
-// Health check endpoint
+// Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date(),
-    environment: NODE_ENV,
-    database: 'MySQL Connected',
-    // ✅ Optional: Add excel route to health check
-    endpoints: {
-      auth: '/api/auth',
-      users: '/api/users',
-      excel: '/api/excel'
-    }
+    environment: process.env.NODE_ENV
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: `Route ${req.url} not found` 
   });
 });
 
 // Error handler
-app.use(errorHandler);
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ message: `Route ${req.url} not found` });
+app.use((err, req, res, next) => {
+  console.error('❌ Error:', err.stack);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Server Error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
 });
+
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
   console.log('='.repeat(50));
-  console.log(`🚀 Server running in ${NODE_ENV} mode on port ${PORT}`);
-  console.log(`📝 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔌 Allowed origins: ${allowedOrigins.join(', ')}`);
-  console.log('📋 Available routes:');
-  console.log('   - /api/auth');
-  console.log('   - /api/users');
-  console.log('   - /api/excel ✅'); // Added Excel route to console log
+  console.log('🏭 GLADES INTERNATIONAL CORPORATION');
   console.log('='.repeat(50));
-});
-
-process.on('unhandledRejection', (err) => {
-  console.log('❌ UNHANDLED REJECTION:', err);
-  server.close(() => process.exit(1));
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 WebSocket: ws://localhost:${PORT}`);
+  console.log(`🌐 API: http://localhost:${PORT}/api`);
+  console.log(`📁 Upload directory: ${uploadsDir}`);
+  console.log(`💾 Data directory: ${dataDir}`);
+  console.log('='.repeat(50));
 });

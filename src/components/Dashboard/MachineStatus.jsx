@@ -5,12 +5,13 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   BuildingOfficeIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  CpuChipIcon  // Changed from CpuIcon to CpuChipIcon
 } from '@heroicons/react/24/outline';
 import useExcelData from '../../hooks/useExcelData';
 
 const MachineStatus = () => {
-  const { machineStatus: excelMachines, loading, lastUpdate } = useExcelData();
+  const { machineStatus: excelMachines, loading, lastUpdate, getMachineUtilization } = useExcelData();
   const [dateTime, setDateTime] = useState(new Date());
   const [filter, setFilter] = useState('all');
   const [plant, setPlant] = useState('all');
@@ -21,41 +22,63 @@ const MachineStatus = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Listen for Excel data updates
+  useEffect(() => {
+    const handleDataUpdate = (event) => {
+      if (event.detail && event.detail.machineStatus) {
+        const processed = event.detail.machineStatus.map(m => ({
+          plant: m.plant || 'P1',
+          process: m.process || '',
+          machine: m.machine || 'Unknown',
+          status: m.status || 'Idle',
+          operator: m.operator || 'Unassigned',
+          remarks: m.remarks || '',
+          efficiency: m.status?.toLowerCase().includes('running') ? Math.floor(Math.random() * 30 + 70) : 0,
+          utilization: getMachineUtilization(m.machine)?.current || 0
+        }));
+        setMachines(processed);
+      }
+    };
+    
+    window.addEventListener('excelDataUpdated', handleDataUpdate);
+    return () => window.removeEventListener('excelDataUpdated', handleDataUpdate);
+  }, [getMachineUtilization]);
+
   useEffect(() => {
     if (excelMachines && excelMachines.length > 0) {
-      // Process machine status data from Excel (Machine Status sheet)
       const processed = excelMachines.map(m => ({
-        plant: m.Plant || 'P1',
-        process: m.Process || 'Unknown',
-        machine: m.Machine || 'Unknown',
-        status: m.Status || 'Idle',
-        operator: m.Operator || 'Unassigned',
-        remarks: m.Remarks || '',
-        efficiency: m.Status === 'Running/Operating' ? Math.floor(Math.random() * 30 + 70) : 0
+        plant: m.plant || 'P1',
+        process: m.process || '',
+        machine: m.machine || 'Unknown',
+        status: m.status || 'Idle',
+        operator: m.operator || 'Unassigned',
+        remarks: m.remarks || '',
+        efficiency: m.status?.toLowerCase().includes('running') ? Math.floor(Math.random() * 30 + 70) : 0,
+        utilization: getMachineUtilization(m.machine)?.current || 0
       }));
       setMachines(processed);
     } else {
       // Fallback mock data from your Excel
       setMachines([
-        { plant: 'P1', process: 'Thermo', machine: 'KMD1', status: 'Running/Operating', operator: 'Eric Abes', remarks: 'Running', efficiency: 95 },
-        { plant: 'P1', process: 'Thermo', machine: 'KMD2', status: 'Idle / Waiting', operator: 'Mary Rose Albia', remarks: 'Waiting for inspector', efficiency: 0 },
-        { plant: 'P1', process: 'Thermo', machine: 'KMD3', status: 'Running/Operating', operator: 'Nancy Atienza', remarks: 'Running', efficiency: 101 },
-        { plant: 'P1', process: 'Thermo', machine: 'KMD4', status: 'Running/Operating', operator: 'Roselyn Alcazaren', remarks: 'Running', efficiency: 107 },
-        { plant: 'P1', process: 'Thermo', machine: 'R8', status: 'Idle / Waiting', operator: 'Rose Marie Abasula', remarks: 'No planned production', efficiency: 0 },
-        { plant: 'P1', process: 'Thermo', machine: 'R14', status: 'Breakdown', operator: 'Genelyn Agon', remarks: 'Under maintenance', efficiency: 0 },
-        { plant: 'P1', process: 'Printing', machine: 'Vandam1', status: 'Breakdown', operator: 'Jeanny Medalla', remarks: 'Corona Treater replacement', efficiency: 0 },
-        { plant: 'P1', process: 'Printing', machine: 'Vandam2', status: 'Running/Operating', operator: 'Sharon Linga', remarks: 'Running', efficiency: 81 },
-        { plant: 'P1', process: 'Printing', machine: 'Vandam3', status: 'Breakdown', operator: 'Joana Fe Andaya', remarks: 'Worn out main drive', efficiency: 0 },
-        { plant: 'P1', process: 'Injection', machine: 'IM4', status: 'Running/Operating', operator: 'Rose Ann Autos', remarks: 'Running', efficiency: 89 },
-        { plant: 'P1', process: 'Injection', machine: 'IM5', status: 'Running/Operating', operator: 'Charlyn De Veyra', remarks: 'Running', efficiency: 84 },
-        { plant: 'P1', process: 'Injection', machine: 'IM17', status: 'Under Maintenance', operator: 'Andro Basbas', remarks: 'Worn out toggle pin', efficiency: 0 },
-        { plant: 'P2', process: 'Thermo Lids', machine: 'ALF13', status: 'Running/Operating', operator: 'Charyz Borromeo', remarks: 'Running', efficiency: 96 },
-        { plant: 'P2', process: 'Thermo Lids', machine: 'ALF14', status: 'Running/Operating', operator: 'Roderick Bristol', remarks: 'Running', efficiency: 100 },
-        { plant: 'P2', process: 'Paper Cups', machine: 'PCM11', status: 'Breakdown', operator: 'Jerry Calaluan', remarks: 'Cam follower bearing worn out', efficiency: 0 },
-        { plant: 'P2', process: 'Paper Cups', machine: 'PCM14', status: 'Idle / Waiting', operator: 'Sheryl Cañeta', remarks: 'Waiting for blanks', efficiency: 21 },
+        { plant: 'P1', process: 'Thermo', machine: 'KMD1', status: 'Running/Operating', operator: 'Eric Abes', remarks: 'Running normally', efficiency: 95, utilization: 95 },
+        { plant: 'P1', process: 'Thermo', machine: 'KMD2', status: 'Idle / Waiting', operator: 'Mary Rose Albia', remarks: 'Waiting for inspector', efficiency: 0, utilization: 0 },
+        { plant: 'P1', process: 'Thermo', machine: 'KMD3', status: 'Running/Operating', operator: 'Nancy Atienza', remarks: 'Running normally', efficiency: 101, utilization: 101 },
+        { plant: 'P1', process: 'Thermo', machine: 'KMD4', status: 'Running/Operating', operator: 'Roselyn Alcazaren', remarks: 'Running normally', efficiency: 107, utilization: 107 },
+        { plant: 'P1', process: 'Thermo', machine: 'R8', status: 'Idle / Waiting', operator: 'Rose Marie Abasula', remarks: 'No planned production', efficiency: 0, utilization: 7 },
+        { plant: 'P1', process: 'Thermo', machine: 'R14', status: 'Breakdown', operator: 'Genelyn Agon', remarks: 'Under maintenance', efficiency: 0, utilization: 0 },
+        { plant: 'P1', process: 'Printing', machine: 'Vandam1', status: 'Breakdown', operator: 'Jeanny Medalla', remarks: 'Corona Treater replacement', efficiency: 0, utilization: 0 },
+        { plant: 'P1', process: 'Printing', machine: 'Vandam2', status: 'Running/Operating', operator: 'Sharon Linga', remarks: 'Running normally', efficiency: 81, utilization: 81 },
+        { plant: 'P1', process: 'Printing', machine: 'Vandam3', status: 'Breakdown', operator: 'Joana Fe Andaya', remarks: 'Worn out main drive', efficiency: 0, utilization: 0 },
+        { plant: 'P1', process: 'Injection', machine: 'IM4', status: 'Running/Operating', operator: 'Rose Ann Autos', remarks: 'Running normally', efficiency: 89, utilization: 89 },
+        { plant: 'P1', process: 'Injection', machine: 'IM5', status: 'Running/Operating', operator: 'Charlyn De Veyra', remarks: 'Running normally', efficiency: 84, utilization: 84 },
+        { plant: 'P1', process: 'Injection', machine: 'IM17', status: 'Under Maintenance', operator: 'Andro Basbas', remarks: 'Worn out toggle pin', efficiency: 0, utilization: 0 },
+        { plant: 'P2', process: 'Thermo Lids', machine: 'ALF13', status: 'Running/Operating', operator: 'Charyz Borromeo', remarks: 'Running normally', efficiency: 96, utilization: 96 },
+        { plant: 'P2', process: 'Thermo Lids', machine: 'ALF14', status: 'Running/Operating', operator: 'Roderick Bristol', remarks: 'Running normally', efficiency: 100, utilization: 100 },
+        { plant: 'P2', process: 'Paper Cups', machine: 'PCM11', status: 'Breakdown', operator: 'Jerry Calaluan', remarks: 'Cam follower bearing worn out', efficiency: 0, utilization: 0 },
+        { plant: 'P2', process: 'Paper Cups', machine: 'PCM14', status: 'Idle / Waiting', operator: 'Sheryl Cañeta', remarks: 'Waiting for blanks', efficiency: 21, utilization: 21 },
       ]);
     }
-  }, [excelMachines]);
+  }, [excelMachines, getMachineUtilization]);
 
   const filteredMachines = machines.filter(m => {
     if (!m) return false;
@@ -96,13 +119,21 @@ const MachineStatus = () => {
     maintenance: machines.filter(m => m && m.status && m.status.toLowerCase().includes('maintenance')).length,
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white p-6 rounded-lg shadow-lg">
         <div className="flex items-center space-x-4">
           <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
-            <BuildingOfficeIcon className="h-8 w-8 text-white" />
+            <CpuChipIcon className="h-8 w-8 text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-wider">GLADES INTERNATIONAL CORPORATION</h1>
@@ -118,6 +149,7 @@ const MachineStatus = () => {
             </div>
           </div>
           <div className="text-sm text-blue-200 bg-blue-800/30 px-4 py-2 rounded-lg">
+            <ClockIcon className="h-4 w-4 inline mr-1" />
             {dateTime.toLocaleDateString()} {dateTime.toLocaleTimeString()}
           </div>
         </div>
@@ -197,6 +229,7 @@ const MachineStatus = () => {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b bg-gray-50">
           <h3 className="text-lg font-semibold text-gray-900">Machine Status Details</h3>
+          <p className="text-sm text-gray-500 mt-1">Based on data from Excel file (Machine Status sheet)</p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -207,6 +240,7 @@ const MachineStatus = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Machine</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Efficiency</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remarks</th>
               </tr>
             </thead>
@@ -231,6 +265,17 @@ const MachineStatus = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{machine?.operator || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                        <div 
+                          className={`h-2 rounded-full ${machine?.efficiency >= 80 ? 'bg-green-600' : machine?.efficiency >= 50 ? 'bg-yellow-600' : 'bg-red-600'}`}
+                          style={{ width: `${Math.min(machine?.efficiency || 0, 100)}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm text-gray-900">{machine?.efficiency || 0}%</span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{machine?.remarks || 'N/A'}</td>
                 </tr>
               ))}

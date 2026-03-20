@@ -1,86 +1,43 @@
-import { io } from 'socket.io-client';
-
 class WebSocketService {
   constructor() {
     this.socket = null;
-    this.listeners = new Map();
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 5000;
   }
 
-  connect() {
-    const token = localStorage.getItem('token');
-    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-    const baseURL = API_URL.replace('/api', '');
+  connect(channel) {
+    const wsUrl = process.env.REACT_APP_WS_URL || `ws://${window.location.hostname}:5000`;
+    this.socket = new WebSocket(`${wsUrl}?channel=${channel}`);
     
-    this.socket = io(baseURL, {
-      auth: { token },
-      transports: ['websocket'],
-    });
-
-    this.socket.on('connect', () => {
+    this.socket.onopen = () => {
       console.log('WebSocket connected');
-      
-      // Join user room
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (user?._id) {
-        this.socket.emit('join', user._id);
-      }
-    });
-
-    this.socket.on('disconnect', () => {
+      this.reconnectAttempts = 0;
+    };
+    
+    this.socket.onclose = () => {
       console.log('WebSocket disconnected');
-    });
+      this.reconnect();
+    };
+    
+    return this.socket;
+  }
 
-    // Setup listeners
-    this.socket.on('new_message', (data) => {
-      this.emit('new_message', data);
-    });
-
-    this.socket.on('notification', (data) => {
-      this.emit('notification', data);
-    });
-
-    this.socket.on('message_read', (data) => {
-      this.emit('message_read', data);
-    });
+  reconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      setTimeout(() => {
+        this.reconnectAttempts++;
+        this.connect();
+      }, this.reconnectDelay);
+    }
   }
 
   disconnect() {
     if (this.socket) {
-      this.socket.disconnect();
+      this.socket.close();
       this.socket = null;
-    }
-  }
-
-  on(event, callback) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event).add(callback);
-  }
-
-  off(event, callback) {
-    if (this.listeners.has(event)) {
-      this.listeners.get(event).delete(callback);
-    }
-  }
-
-  emit(event, data) {
-    if (this.listeners.has(event)) {
-      this.listeners.get(event).forEach(callback => callback(data));
-    }
-  }
-
-  sendMessage(messageData) {
-    if (this.socket) {
-      this.socket.emit('send_message', messageData);
-    }
-  }
-
-  sendNotification(notificationData) {
-    if (this.socket) {
-      this.socket.emit('send_notification', notificationData);
     }
   }
 }
 
-export default new WebSocketService();
+export const websocketService = new WebSocketService();

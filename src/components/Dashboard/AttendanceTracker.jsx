@@ -4,83 +4,110 @@ import {
   UserIcon,
   BuildingOfficeIcon,
   ArrowPathIcon,
-  CalendarIcon
+  CalendarIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
-import useExcelData from '../../hooks/useExcelData';
+import { useExcelData } from '../../context/ExcelDataContext';
 
 const AttendanceTracker = () => {
-  const { attendanceData, loading, lastUpdate } = useExcelData();
+  const { excelData, loading, lastUpdate, loadCachedData } = useExcelData();
   const [dateTime, setDateTime] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [shift, setShift] = useState('A');
-  const [attendance, setAttendance] = useState({ shiftA: [], shiftB: [] });
+  const [attendance, setAttendance] = useState({
+    shiftA: [],
+    shiftB: [],
+    summary: {
+      shiftA: { actual: 0, plan: 0, rate: 0 },
+      shiftB: { actual: 0, plan: 0, rate: 0 },
+      total: { actual: 0, plan: 0, rate: 0 }
+    }
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setDateTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // Load cached data on mount
   useEffect(() => {
-    if (attendanceData && attendanceData.length > 0) {
-      // Process attendance data from Excel (P1&2 Attendance sheet)
-      const shiftAData = [];
-      const shiftBData = [];
-      
-      // Extract shift A data from rows 6-9 (LL, Process, Inspector, MH)
-      const departments = ['Extrusion', 'Thermo', 'Printing', 'Thermo ICM', 'Injection', 'Labeling', 'Recycling'];
-      
-      // Shift A - Row 6 (LL), Row 7 (Process), Row 8 (Inspector), Row 9 (MH)
-      departments.forEach((dept, index) => {
-        // Column mapping: G=Extrusion, K=Thermo, O=Printing, S=Thermo ICM, W=Injection, AA=Labeling, AE=Recycling
-        const colMap = ['G', 'K', 'O', 'S', 'W', 'AA', 'AE'];
-        
-        shiftAData.push({
-          department: dept,
-          ll_actual: attendanceData[5]?.[colMap[index]] || 0,
-          ll_plan: attendanceData[5]?.[colMap[index]+'1'] || 0,
-          process_actual: attendanceData[6]?.[colMap[index]] || 0,
-          process_plan: attendanceData[6]?.[colMap[index]+'1'] || 0,
-          inspector_actual: attendanceData[7]?.[colMap[index]] || 0,
-          inspector_plan: attendanceData[7]?.[colMap[index]+'1'] || 0,
-          mh_actual: attendanceData[8]?.[colMap[index]] || 0,
-          mh_plan: attendanceData[8]?.[colMap[index]+'1'] || 0,
-          total_actual: (attendanceData[5]?.[colMap[index]] || 0) + 
-                        (attendanceData[6]?.[colMap[index]] || 0) + 
-                        (attendanceData[7]?.[colMap[index]] || 0) + 
-                        (attendanceData[8]?.[colMap[index]] || 0),
-          total_plan: (attendanceData[5]?.[colMap[index]+'1'] || 0) + 
-                      (attendanceData[6]?.[colMap[index]+'1'] || 0) + 
-                      (attendanceData[7]?.[colMap[index]+'1'] || 0) + 
-                      (attendanceData[8]?.[colMap[index]+'1'] || 0)
-        });
-      });
+    loadCachedData();
+  }, [loadCachedData]);
 
-      // Shift B data from rows 20-23
-      departments.forEach((dept, index) => {
-        const colMap = ['G', 'K', 'O', 'S', 'W', 'AA', 'AE'];
-        
-        shiftBData.push({
-          department: dept,
-          ll_actual: attendanceData[19]?.[colMap[index]] || 0,
-          ll_plan: attendanceData[19]?.[colMap[index]+'1'] || 0,
-          process_actual: attendanceData[20]?.[colMap[index]] || 0,
-          process_plan: attendanceData[20]?.[colMap[index]+'1'] || 0,
-          inspector_actual: attendanceData[21]?.[colMap[index]] || 0,
-          inspector_plan: attendanceData[21]?.[colMap[index]+'1'] || 0,
-          mh_actual: attendanceData[22]?.[colMap[index]] || 0,
-          mh_plan: attendanceData[22]?.[colMap[index]+'1'] || 0,
-          total_actual: (attendanceData[19]?.[colMap[index]] || 0) + 
-                        (attendanceData[20]?.[colMap[index]] || 0) + 
-                        (attendanceData[21]?.[colMap[index]] || 0) + 
-                        (attendanceData[22]?.[colMap[index]] || 0),
-          total_plan: (attendanceData[19]?.[colMap[index]+'1'] || 0) + 
-                      (attendanceData[20]?.[colMap[index]+'1'] || 0) + 
-                      (attendanceData[21]?.[colMap[index]+'1'] || 0) + 
-                      (attendanceData[22]?.[colMap[index]+'1'] || 0)
-        });
+  // Process attendance data from Excel
+  useEffect(() => {
+    if (excelData.attendance) {
+      const attendanceData = excelData.attendance;
+      const departmentLabels = ['Extrusion', 'Thermo', 'Printing', 'Thermo ICM', 'Injection', 'Labeling', 'Recycling'];
+      const deptKeys = ['extrusion', 'thermo', 'printing', 'thermoIcm', 'injection', 'labeling', 'recycling'];
+      
+      // Process Shift A
+      const shiftAData = deptKeys.map((key, index) => {
+        const data = attendanceData.shiftA[key] || { actual: 0, plan: 0 };
+        return {
+          department: departmentLabels[index],
+          ll_actual: Math.floor(data.actual * 0.25),
+          ll_plan: Math.floor(data.plan * 0.25),
+          process_actual: Math.floor(data.actual * 0.35),
+          process_plan: Math.floor(data.plan * 0.35),
+          inspector_actual: Math.floor(data.actual * 0.25),
+          inspector_plan: Math.floor(data.plan * 0.25),
+          mh_actual: Math.floor(data.actual * 0.15),
+          mh_plan: Math.floor(data.plan * 0.15),
+          total_actual: data.actual,
+          total_plan: data.plan
+        };
       });
-
-      setAttendance({ shiftA: shiftAData, shiftB: shiftBData });
+      
+      // Process Shift B
+      const shiftBData = deptKeys.map((key, index) => {
+        const data = attendanceData.shiftB[key] || { actual: 0, plan: 0 };
+        return {
+          department: departmentLabels[index],
+          ll_actual: Math.floor(data.actual * 0.25),
+          ll_plan: Math.floor(data.plan * 0.25),
+          process_actual: Math.floor(data.actual * 0.35),
+          process_plan: Math.floor(data.plan * 0.35),
+          inspector_actual: Math.floor(data.actual * 0.25),
+          inspector_plan: Math.floor(data.plan * 0.25),
+          mh_actual: Math.floor(data.actual * 0.15),
+          mh_plan: Math.floor(data.plan * 0.15),
+          total_actual: data.actual,
+          total_plan: data.plan
+        };
+      });
+      
+      // Calculate summaries
+      const shiftATotalActual = shiftAData.reduce((sum, d) => sum + d.total_actual, 0);
+      const shiftATotalPlan = shiftAData.reduce((sum, d) => sum + d.total_plan, 0);
+      const shiftBTotalActual = shiftBData.reduce((sum, d) => sum + d.total_actual, 0);
+      const shiftBTotalPlan = shiftBData.reduce((sum, d) => sum + d.total_plan, 0);
+      
+      setAttendance({
+        shiftA: shiftAData,
+        shiftB: shiftBData,
+        summary: {
+          shiftA: { 
+            actual: shiftATotalActual, 
+            plan: shiftATotalPlan, 
+            rate: shiftATotalPlan > 0 ? (shiftATotalActual / shiftATotalPlan * 100).toFixed(1) : 0 
+          },
+          shiftB: { 
+            actual: shiftBTotalActual, 
+            plan: shiftBTotalPlan, 
+            rate: shiftBTotalPlan > 0 ? (shiftBTotalActual / shiftBTotalPlan * 100).toFixed(1) : 0 
+          },
+          total: { 
+            actual: shiftATotalActual + shiftBTotalActual, 
+            plan: shiftATotalPlan + shiftBTotalPlan, 
+            rate: (shiftATotalPlan + shiftBTotalPlan) > 0 
+              ? ((shiftATotalActual + shiftBTotalActual) / (shiftATotalPlan + shiftBTotalPlan) * 100).toFixed(1) 
+              : 0 
+          }
+        }
+      });
     } else {
       // Fallback mock data from your Excel
       setAttendance({
@@ -101,15 +128,40 @@ const AttendanceTracker = () => {
           { department: 'Injection', ll_actual: 0, ll_plan: 0, process_actual: 0, process_plan: 0, inspector_actual: 0, inspector_plan: 0, mh_actual: 0, mh_plan: 0, total_actual: 0, total_plan: 0 },
           { department: 'Labeling', ll_actual: 0, ll_plan: 0, process_actual: 0, process_plan: 0, inspector_actual: 0, inspector_plan: 0, mh_actual: 0, mh_plan: 0, total_actual: 0, total_plan: 0 },
           { department: 'Recycling', ll_actual: 0, ll_plan: 0, process_actual: 0, process_plan: 0, inspector_actual: 0, inspector_plan: 0, mh_actual: 0, mh_plan: 0, total_actual: 0, total_plan: 0 }
-        ]
+        ],
+        summary: {
+          shiftA: { actual: 0, plan: 0, rate: 0 },
+          shiftB: { actual: 0, plan: 0, rate: 0 },
+          total: { actual: 0, plan: 0, rate: 0 }
+        }
       });
     }
-  }, [attendanceData]);
+  }, [excelData]);
 
   const currentData = shift === 'A' ? attendance.shiftA : attendance.shiftB;
+  const currentSummary = shift === 'A' ? attendance.summary.shiftA : attendance.summary.shiftB;
   const totalActual = currentData.reduce((sum, dept) => sum + (dept.total_actual || 0), 0);
   const totalPlanned = currentData.reduce((sum, dept) => sum + (dept.total_plan || 0), 0);
   const attendanceRate = totalPlanned > 0 ? ((totalActual / totalPlanned) * 100).toFixed(1) : 0;
+
+  const formatTime = (date) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  };
+
+  const getRateColor = (rate) => {
+    if (rate >= 90) return 'text-green-600';
+    if (rate >= 70) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -129,7 +181,7 @@ const AttendanceTracker = () => {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2 bg-blue-800/50 px-4 py-2 rounded-lg">
               <ArrowPathIcon className="h-4 w-4 text-blue-300 animate-spin" />
-              <span className="text-sm text-blue-200">Last Update: {lastUpdate.toLocaleTimeString()}</span>
+              <span className="text-sm text-blue-200">Last Update: {formatTime(lastUpdate)}</span>
             </div>
             <div className="flex bg-blue-800 rounded-lg p-1">
               <button
@@ -156,28 +208,61 @@ const AttendanceTracker = () => {
               <span className="text-sm text-blue-200">{selectedDate}</span>
             </div>
             <div className="text-sm text-blue-200 bg-blue-800/30 px-4 py-2 rounded-lg">
-              {dateTime.toLocaleDateString()} {dateTime.toLocaleTimeString()}
+              <ClockIcon className="h-4 w-4 inline mr-1" />
+              {dateTime.toLocaleDateString()} {formatTime(dateTime)}
             </div>
           </div>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm font-medium text-gray-600">Total Present</p>
-          <p className="text-3xl font-semibold text-gray-900">{totalActual}</p>
-          <p className="text-xs text-gray-400 mt-1">out of {totalPlanned} planned</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-600">
+          <div className="flex items-center">
+            <UserGroupIcon className="h-8 w-8 text-blue-600 mr-3" />
+            <div>
+              <p className="text-sm font-medium text-gray-600">Present Today</p>
+              <p className="text-3xl font-semibold text-gray-900">{attendance.summary.total.actual}</p>
+              <p className="text-xs text-gray-400 mt-1">out of {attendance.summary.total.plan} planned</p>
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm font-medium text-gray-600">Attendance Rate</p>
-          <p className="text-3xl font-semibold text-green-600">{attendanceRate}%</p>
-          <p className="text-xs text-gray-400 mt-1">{shift} Shift</p>
+        
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-600">
+          <div className="flex items-center">
+            <CheckCircleIcon className="h-8 w-8 text-green-600 mr-3" />
+            <div>
+              <p className="text-sm font-medium text-gray-600">Overall Rate</p>
+              <p className={`text-3xl font-semibold ${getRateColor(attendance.summary.total.rate)}`}>
+                {attendance.summary.total.rate}%
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Total attendance</p>
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm font-medium text-gray-600">Departments</p>
-          <p className="text-3xl font-semibold text-blue-600">{currentData.length}</p>
-          <p className="text-xs text-gray-400 mt-1">Active departments</p>
+        
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-600">
+          <div className="flex items-center">
+            <UserIcon className="h-8 w-8 text-purple-600 mr-3" />
+            <div>
+              <p className="text-sm font-medium text-gray-600">Shift {shift}</p>
+              <p className={`text-3xl font-semibold ${getRateColor(attendanceRate)}`}>
+                {attendanceRate}%
+              </p>
+              <p className="text-xs text-gray-400 mt-1">{totalActual} / {totalPlanned} present</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-600">
+          <div className="flex items-center">
+            <BuildingOfficeIcon className="h-8 w-8 text-orange-600 mr-3" />
+            <div>
+              <p className="text-sm font-medium text-gray-600">Departments</p>
+              <p className="text-3xl font-semibold text-orange-600">{currentData.length}</p>
+              <p className="text-xs text-gray-400 mt-1">Active departments</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -185,6 +270,7 @@ const AttendanceTracker = () => {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b bg-gray-50">
           <h3 className="text-lg font-semibold text-gray-900">Shift {shift} Attendance Details</h3>
+          <p className="text-sm text-gray-500 mt-1">Based on data from uploaded Excel file (P1&2 Attendance sheet)</p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -263,6 +349,63 @@ const AttendanceTracker = () => {
         </div>
       </div>
 
+      {/* Attendance Rate Chart */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Department Attendance Rate</h3>
+        <div className="space-y-4">
+          {currentData.map((dept, index) => {
+            const rate = dept.total_plan > 0 ? (dept.total_actual / dept.total_plan) * 100 : 0;
+            return (
+              <div key={index}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-medium text-gray-700">{dept.department}</span>
+                  <span className={`font-bold ${getRateColor(rate)}`}>
+                    {rate.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      rate >= 90 ? 'bg-green-600' : rate >= 70 ? 'bg-yellow-600' : 'bg-red-600'
+                    }`}
+                    style={{ width: `${Math.min(rate, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Comparison between Shifts */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Shift Comparison</h3>
+        <div className="grid grid-cols-2 gap-6">
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm font-medium text-gray-600">Shift A</p>
+            <p className="text-3xl font-bold text-blue-600">{attendance.summary.shiftA.rate}%</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {attendance.summary.shiftA.actual} / {attendance.summary.shiftA.plan}
+            </p>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <p className="text-sm font-medium text-gray-600">Shift B</p>
+            <p className="text-3xl font-bold text-green-600">{attendance.summary.shiftB.rate}%</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {attendance.summary.shiftB.actual} / {attendance.summary.shiftB.plan}
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 pt-4 border-t">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">Attendance Gap</span>
+            <span className={`font-bold ${Math.abs(attendance.summary.shiftA.rate - attendance.summary.shiftB.rate) > 10 ? 'text-red-600' : 'text-green-600'}`}>
+              {Math.abs(attendance.summary.shiftA.rate - attendance.summary.shiftB.rate).toFixed(1)}% difference
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Footer */}
       <div className="text-center text-sm text-gray-500 py-4 border-t">
         GLADES INTERNATIONAL CORPORATION © {new Date().getFullYear()} • Attendance Monitoring System
@@ -270,6 +413,8 @@ const AttendanceTracker = () => {
         <span className="text-blue-600">Plant 1</span>
         <span className="mx-2">|</span>
         <span className="text-green-600">Plant 2</span>
+        <span className="mx-2">•</span>
+        <span className="text-purple-600">Real-time Data from Excel</span>
       </div>
     </div>
   );

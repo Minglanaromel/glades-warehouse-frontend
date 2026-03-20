@@ -1,14 +1,18 @@
+// src/routes/dashboardRoutes.js
 const express = require('express');
 const router = express.Router();
-const {
-  getDashboard,
-  updateLayout,
-  getDashboardStats,
-} = require('../controllers/dashboardController');
 const { protect } = require('../middleware/authMiddleware');
+const {
+  getDashboardStats, getCapacityData, getMachineStatus, getDowntime,
+  getAttendance, getHourlyProduction, getTroubleReports
+} = require('../controllers/dashboardController');
 
-router.get('/', protect, getDashboard);
 router.get('/stats', protect, getDashboardStats);
-router.put('/layout', protect, updateLayout);
+router.get('/capacity', protect, getCapacityData);
+router.get('/machines', protect, getMachineStatus);
+router.get('/downtime', protect, getDowntime);
+router.get('/attendance', protect, getAttendance);
+router.get('/hourly', protect, getHourlyProduction);
+router.get('/trouble-reports', protect, getTroubleReports);
 
 module.exports = router;
